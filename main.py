@@ -9,7 +9,10 @@ from google.oauth2.service_account import Credentials
 load_dotenv()
 
 # authenticating access
-scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
 creds_path = os.getenv("GOOGLE_CREDS_PATH")
 
 creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
@@ -28,57 +31,58 @@ class BaseAPI:
         return response.json()
 
 
-class CryptoAPI(BaseAPI):
+class YuGiOhAPI(BaseAPI):
     def __init__(self):
-        super().__init__("https://api.coingecko.com/api/v3")
+        super().__init__("https://db.ygoprodeck.com/api/v7")
 
-    def GetTopCoins(self, limit=5):
-        data = self.get("/coins/markets?vs_currency=usd")
+    def GetCards(self, archetype):
+        data = self.get(f"/cardinfo.php?archetype={archetype}")
+        cards = []
 
-        # transform — grab the top coins
-        cleaned = [
-            {
-                "name": coin["name"],
-                "symbol": coin["symbol"],
-                "price": coin["current_price"],
-            }
-            for coin in data[:limit]
-        ]
-        return cleaned
-    
+        for card in data.get("data", [])[:]:
+            cards.append({
+                "name": card.get("name"),
+                "type":card.get("type"),
+                "desc": card.get("desc", "")[:100] + "...",  # Shortened
+                "image_url": card.get("card_images", [{}])[0].get("image_url", "")
+            })
+            
+        return cards
+
 def GetorCreateSheet(sheet_title, emails=None):
     # check if sheet exists. if not, create a new one
     try:
         sheet = client.open(sheet_title)
+        sheet.values_clear()
         print("Editing existing sheet.")
     except gspread.SpreadsheetNotFound:
         sheet = client.create(sheet_title)
         print("Creating new sheet.")
-    
+
     # Share spreadsheets to email addresses
     if emails:
         for email in emails:
-            sheet.share(email, perm_type='user', role='writer')
+            sheet.share(email, perm_type="user", role="writer")
 
     return sheet
+
 
 def WriteToSheet(data, sheet):
     worksheet = sheet.sheet1
 
-    # get headers from keys of the first dictionary
+    # get headers from keys in the first dictionary
     headers = list(data[0].keys())
     values = [headers] + [[row[h] for h in headers] for row in data]
 
     worksheet.update(values, "A1")
 
 
-
-
 if __name__ == "__main__":
-    crypto = CryptoAPI()
+    yugioh = YuGiOhAPI()
     email_addresses = ["lexicolorful@gmail.com"]
-    
+
     sheet = GetorCreateSheet("Crypto Prices", emails=email_addresses)
 
-    top_coins = crypto.GetTopCoins(limit=10)
-    WriteToSheet(top_coins, sheet)
+    cards = yugioh.GetCards("Dark Magician")
+
+    WriteToSheet(cards, sheet)
