@@ -5,7 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # load super secret information !
-# necessary to push to Git using APIs
+# necessary to push to Git since i'm working with APIs
 load_dotenv()
 
 # authenticating access
@@ -36,18 +36,22 @@ class YuGiOhAPI(BaseAPI):
         super().__init__("https://db.ygoprodeck.com/api/v7")
 
     def GetCards(self, archetype):
+        # search up card archetypes
         data = self.get(f"/cardinfo.php?archetype={archetype}")
         cards = []
 
         for card in data.get("data", [])[:]:
-            cards.append({
-                "name": card.get("name"),
-                "type":card.get("type"),
-                "desc": card.get("desc", "")[:100] + "...",  # Shortened
-                "image_url": card.get("card_images", [{}])[0].get("image_url", "")
-            })
-            
+            cards.append(
+                {
+                    "name": card.get("name"),
+                    "type": card.get("type"),
+                    "desc": card.get("desc", "")[:100] + "...",
+                    "image_url": card.get("card_images", [{}])[0].get("image_url", ""),
+                }
+            )
+
         return cards
+
 
 def GetorCreateSheet(sheet_title, emails=None):
     # check if sheet exists. if not, create a new one
@@ -59,7 +63,7 @@ def GetorCreateSheet(sheet_title, emails=None):
         sheet = client.create(sheet_title)
         print("Creating new sheet.")
 
-    # Share spreadsheets to email addresses
+    # share sheet to email addresses
     if emails:
         for email in emails:
             sheet.share(email, perm_type="user", role="writer")
@@ -70,7 +74,7 @@ def GetorCreateSheet(sheet_title, emails=None):
 def WriteToSheet(data, sheet):
     worksheet = sheet.sheet1
 
-    # get headers from keys in the first dictionary
+    # get headers from keys in dictionary
     headers = list(data[0].keys())
     values = [headers] + [[row[h] for h in headers] for row in data]
 
