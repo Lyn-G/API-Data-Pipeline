@@ -9,14 +9,14 @@ from google.oauth2.service_account import Credentials
 load_dotenv()
 
 # authenticating access
-scopes = [
+SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-creds_path = os.getenv("GOOGLE_CREDS_PATH")
+CREDS_PATH = os.getenv("GOOGLE_CREDS_PATH")
 
-creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
-client = gspread.authorize(creds)
+CREDS = Credentials.from_service_account_file(CREDS_PATH, scopes=SCOPES)
+CLIENT = gspread.authorize(CREDS)
 
 
 # start of the classes
@@ -35,58 +35,104 @@ class YuGiOhAPI(BaseAPI):
     def __init__(self):
         super().__init__("https://db.ygoprodeck.com/api/v7")
 
-    def GetCards(self, archetype):
-        # search up card archetypes
-        data = self.get(f"/cardinfo.php?archetype={archetype}")
-        cards = []
+    def get_cards(self, archetype=None):
+        try:
+            # default to Dark Magician if nothing put in
+            archetype = archetype or "Dark Magician"
 
-        for card in data.get("data", [])[:]:
-            cards.append(
-                {
-                    "name": card.get("name"),
-                    "type": card.get("type"),
-                    "desc": card.get("desc", "")[:100] + "...",
-                    "image_url": card.get("card_images", [{}])[0].get("image_url", ""),
-                }
-            )
+            # search up card archetypes
+            data = self.get(f"/cardinfo.php?archetype={archetype}")
+            card_to_sheets = []
 
-        return cards
+            for card in data.get("data"):
+                card_data = self._card_data(card)
+                card_to_sheets.append(card_data)
+
+            # sort and return top 15 cards by power source
+            card_to_sheets.sort(key=lambda card: card["Power Score"], reverse=True)
+            return card_to_sheets[:15]
+
+        # quit program if archetype not found
+        except:
+            print("\nI couldn't find that archetype...\nPlease try again.")
+            quit()
+
+    def _card_data(self, card):
+        return {
+            "Name": card.get("name"),
+            "Type": card.get("type"),
+            "Power Score": self._get_power_score(card),
+            "Description": self._get_description(card.get("desc")),
+            "Image Url": self._get_image_url(card),
+        }
+
+    def _get_description(self, desc, length=100):
+        return desc[:length] + "..." if len(desc) > length else desc
+
+    def _get_power_score(self, card):
+        attack = card.get("atk", 0)
+        defense = card.get("def", 0)
+
+        power_score = (attack + defense) / 2
+        return round(power_score, 1)
+
+    def _get_image_url(self, card):
+        return card.get("card_images", [{}])[0].get("image_url")
 
 
-def GetorCreateSheet(sheet_title, emails=None):
+# start of the global functions
+def get_or_create_sheet(sheet_title, emails=None):
     # check if sheet exists. if not, create a new one
     try:
-        sheet = client.open(sheet_title)
-        sheet.values_clear()
-        print("Editing existing sheet.")
+        sheet = CLIENT.open(sheet_title)
+        print("\nSheet name found! Let me edit that for you!\n")
     except gspread.SpreadsheetNotFound:
-        sheet = client.create(sheet_title)
-        print("Creating new sheet.")
+        sheet = CLIENT.create(sheet_title)
+        print("\nA new sheet name? Creating and editing new sheet!\n")
 
     # share sheet to email addresses
     if emails:
+        already_shared = [
+            p.get("emailAddress").lower()
+            for p in sheet.list_permissions()
+            if p.get("emailAddress")
+        ]
+
         for email in emails:
-            sheet.share(email, perm_type="user", role="writer")
+            if email not in already_shared:
+                sheet.share(email, perm_type="user", role="writer")
+                print(f"Sharing with {email}.")
+            else:
+                print(f"Already shared with {email}.")
 
     return sheet
 
 
-def WriteToSheet(data, sheet):
+def write_to_sheet(data, sheet):
     worksheet = sheet.sheet1
+    worksheet.clear()
 
     # get headers from keys in dictionary
     headers = list(data[0].keys())
     values = [headers] + [[row[h] for h in headers] for row in data]
 
     worksheet.update(values, "A1")
+    print("\nHere is the top 15 for that archetype!\nThank you so much!")
 
 
 if __name__ == "__main__":
     yugioh = YuGiOhAPI()
+
     email_addresses = ["lexicolorful@gmail.com"]
 
-    sheet = GetorCreateSheet("Crypto Prices", emails=email_addresses)
+    sheet = get_or_create_sheet(
+        input("What would you like to name your sheet?  "), emails=email_addresses
+    )
 
-    cards = yugioh.GetCards("Dark Magician")
+    archetypes = input(
+        "\nWhat archetype would you like to find information for?\n"
+        "Default shall be Dark Magician.\n"
+    )
 
-    WriteToSheet(cards, sheet)
+    cards = yugioh.get_cards(archetypes)
+    write_to_sheet(cards, sheet)
