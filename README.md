@@ -10,9 +10,9 @@ The program will ask what emails you'd like to share the spreadsheet with. Type 
 
 You'll then be prompted to type the name of the sheet you'd like to edit.<br>
 
-- If the sheet name is not found, the program will make a new one and share it with the emails provided.
+- If the sheet name is **not found**, the program will make a new one and share it with the emails provided.
 
-- If the sheet name is found, the program will edit that one and share it with the emails provided. <br><br>
+- If the sheet name is **found**, the program will edit that one and share it with the emails provided. <br><br>
 
 Now the script will ask you which YuGiOh archetype you'd like to search up cards for. If nothing is placed down, the default archetype search will be "Dark Magician".<br>
 

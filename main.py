@@ -145,6 +145,7 @@ if __name__ == "__main__":
 
     archetypes = input(
         "\nWhat archetype would you like to find information for?\n"
+        "https://db.ygoprodeck.com/api/v7/archetypes.php\n"
         "Default shall be Dark Magician.\n"
     )
 
