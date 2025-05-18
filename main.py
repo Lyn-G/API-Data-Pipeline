@@ -100,8 +100,12 @@ def get_or_create_sheet(sheet_title, emails=None):
 
         for email in emails:
             if email not in already_shared:
-                sheet.share(email, perm_type="user", role="writer")
-                print(f"Sharing with {email}.")
+                # if the user did not add in an actual email
+                try: 
+                    sheet.share(email, perm_type="user", role="writer")
+                    print(f"Sharing with {email}.")
+                except:
+                    print(f"{email} could not be shared to the sheet.")
             else:
                 print(f"Already shared with {email}.")
 
@@ -117,13 +121,23 @@ def write_to_sheet(data, sheet):
     values = [headers] + [[row[h] for h in headers] for row in data]
 
     worksheet.update(values, "A1")
-    print("\nHere is the top 15 for that archetype!\nThank you so much!")
+    print("\nHere is the top 15 strongest cards for that archetype!\nThank you so much!")
+    print(f"https://docs.google.com/spreadsheets/d/{sheet.id}")
 
 
 if __name__ == "__main__":
     yugioh = YuGiOhAPI()
 
-    email_addresses = ["lexicolorful@gmail.com"]
+    email_addresses = []
+    print("\nBefore we get started,")
+
+    while True:
+        ask_email = input("\nWhat email would you like to share your sheet to?\n"
+        "Type   n   to let me know you finished!\n")
+        
+        if (ask_email.lower() == "n"): break
+
+        email_addresses.append(ask_email.lower())
 
     sheet = get_or_create_sheet(
         input("What would you like to name your sheet?  "), emails=email_addresses
