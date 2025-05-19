@@ -121,7 +121,7 @@ def write_to_sheet(data, sheet):
     values = [headers] + [[row[h] for h in headers] for row in data]
 
     worksheet.update(values, "A1")
-    print("\nHere is the top 15 strongest cards for that archetype!\nThank you so much!")
+    print("\nHere is the top 15 strongest cards for that archetype!\nClick the link below!")
     print(f"https://docs.google.com/spreadsheets/d/{sheet.id}")
 
 
