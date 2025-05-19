@@ -4,6 +4,9 @@
 
 ---
 
+In the terminal, please install the following libraries:<br>
+`pip install requests gspread google-auth python-dotenv`<br>
+
 To set up this script, simply type `python main.py` into your terminal to run the script. <br>
 
 The program will ask what emails you'd like to share the spreadsheet with. Type them in one at a time and press enter. Type `n` to let the program know you're done.<br>

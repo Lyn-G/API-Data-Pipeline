@@ -27,8 +27,10 @@ class BaseAPI:
     def get(self, endpoint=""):
         url = self.baseurl + endpoint
         response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+        if response.ok:
+            return response.json()
+        else:
+            response.raise_for_status()
 
 
 class YuGiOhAPI(BaseAPI):
@@ -36,26 +38,20 @@ class YuGiOhAPI(BaseAPI):
         super().__init__("https://db.ygoprodeck.com/api/v7")
 
     def get_cards(self, archetype=None):
-        try:
-            # default to Dark Magician if nothing put in
-            archetype = archetype or "Dark Magician"
 
-            # search up card archetypes
+        try:
             data = self.get(f"/cardinfo.php?archetype={archetype}")
             card_to_sheets = []
 
-            for card in data.get("data"):
+            for card in data.get("data", []):
                 card_data = self._card_data(card)
                 card_to_sheets.append(card_data)
 
-            # sort and return top 15 cards by power source
             card_to_sheets.sort(key=lambda card: card["Power Score"], reverse=True)
             return card_to_sheets[:15]
 
-        # quit program if archetype not found
-        except:
-            print("\nI couldn't find that archetype...\nPlease try again.")
-            quit()
+        except Exception:
+            raise ValueError(f"I couldn't find archetype '{archetype}'... Try again?")
 
     def _card_data(self, card):
         return {
@@ -101,7 +97,7 @@ def get_or_create_sheet(sheet_title, emails=None):
         for email in emails:
             if email not in already_shared:
                 # if the user did not add in an actual email
-                try: 
+                try:
                     sheet.share(email, perm_type="user", role="writer")
                     print(f"Sharing with {email}.")
                 except:
@@ -121,7 +117,9 @@ def write_to_sheet(data, sheet):
     values = [headers] + [[row[h] for h in headers] for row in data]
 
     worksheet.update(values, "A1")
-    print("\nHere is the top 15 strongest cards for that archetype!\nClick the link below!")
+    print(
+        "\nHere is the top 15 strongest cards for that archetype!\nClick the link below!"
+    )
     print(f"https://docs.google.com/spreadsheets/d/{sheet.id}")
 
 
@@ -132,22 +130,46 @@ if __name__ == "__main__":
     print("\nBefore we get started,")
 
     while True:
-        ask_email = input("\nWhat email would you like to share your sheet to?\n"
-        "Type   n   to let me know you finished!\n")
-        
-        if (ask_email.lower() == "n"): break
+        ask_email = (
+            input(
+                "\nWhat email would you like to share your sheet to?\n"
+                "Type   n   to let me know you finished!\n"
+            )
+            .strip()
+            .lower()
+        )
 
-        email_addresses.append(ask_email.lower())
+        # break out if  N   is pressed
+        if ask_email == "n":
+            break
+
+        email_addresses.append(ask_email)
 
     sheet = get_or_create_sheet(
         input("What would you like to name your sheet?  "), emails=email_addresses
     )
 
-    archetypes = input(
-        "\nWhat archetype would you like to find information for?\n"
-        "https://db.ygoprodeck.com/api/v7/archetypes.php\n"
-        "Default shall be Dark Magician.\n"
-    )
+    # archetypes = input(
+    #     "\nWhat archetype would you like to find information for? Click the link to see archetypes!\n"
+    #     "https://db.ygoprodeck.com/api/v7/archetypes.php\n"
+    #     "Press Enter for default (Dark Magician):\n"
+    # )
 
-    cards = yugioh.get_cards(archetypes)
+    while True:
+        archetypes = (
+            input(
+                "\nWhat archetype would you like to find information for? Click the link to see archetypes!\n"
+                "https://db.ygoprodeck.com/api/v7/archetypes.php\n"
+                "Press Enter for default (Dark Magician):\n"
+            ).strip()
+            or "Dark Magician"
+        )
+
+        try:
+            cards = yugioh.get_cards(archetypes)
+            break
+        except ValueError as e:
+            print(e)
+            continue
+
     write_to_sheet(cards, sheet)
