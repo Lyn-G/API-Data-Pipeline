@@ -38,7 +38,6 @@ class YuGiOhAPI(BaseAPI):
         super().__init__("https://db.ygoprodeck.com/api/v7")
 
     def get_cards(self, archetype=None):
-
         try:
             data = self.get(f"/cardinfo.php?archetype={archetype}")
             card_to_sheets = []
@@ -50,9 +49,11 @@ class YuGiOhAPI(BaseAPI):
             card_to_sheets.sort(key=lambda card: card["Power Score"], reverse=True)
             return card_to_sheets[:15]
 
+        # catches API errors
         except Exception:
             raise ValueError(f"I couldn't find archetype '{archetype}'... Try again?")
 
+    # implicit private functions
     def _card_data(self, card):
         return {
             "Name": card.get("name"),
@@ -149,12 +150,8 @@ if __name__ == "__main__":
         input("What would you like to name your sheet?  "), emails=email_addresses
     )
 
-    # archetypes = input(
-    #     "\nWhat archetype would you like to find information for? Click the link to see archetypes!\n"
-    #     "https://db.ygoprodeck.com/api/v7/archetypes.php\n"
-    #     "Press Enter for default (Dark Magician):\n"
-    # )
-
+    # loop until a valid archetype is found
+    # if enter is pressed, Dark Magician will be placed
     while True:
         archetypes = (
             input(
